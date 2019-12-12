@@ -1,0 +1,139 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.35">
+  <actions/>
+  <description>checkout([$class: &apos;GitSCM&apos;, branches: [[name: &apos;*/master&apos;]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[url: &apos;https://github.com/ajodochus/jenkins_ranorex.git&apos;]]])&#xd;
+&#xd;
+ranorex cmdLineArgs: &apos;&apos;, rxGlobalParameter: &apos;&apos;, rxReportDirectory: &apos;&apos;, rxReportExtension: &apos;rxlog&apos;, rxReportFile: &apos;&apos;, rxRunConfiguration: &apos;&apos;, rxTestRailPassword: &apos;jkDimFs06?!&apos;, rxTestRailRID: &apos;&apos;, rxTestRailRunName: &apos;&apos;, rxTestRailUser: &apos;bernd&apos;, rxTestSuiteFilePath: &apos;asf.rxtst&apos;, rxZippedReportDirectory: &apos;&apos;, rxZippedReportFile: &apos;&apos;&#xd;
+&#xd;
+&#xd;
+&#xd;
+/** def ms_build =  &quot;&apos;C:\\Program \ (x86)\\Microsoft Visual Studio\\2017\\Enterprise\\MSBuild\\15.0\\Bin\\MsBuild.exe&apos;&quot;&#xd;
+    def exitStatus = bat(returnStatus: true, script: &quot;${ms_build} ${env.WORKSPACE}\\ranorex\\jenkins_ranore.sln /p:Configuration=Debug&quot;)&#xd;
+    if (exitStatus != 0){&#xd;
+        currentBuild.result = &apos;FAILURE&apos;&#xd;
+    }&#xd;
+*/</description>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.74">
+    <script>/*
+timeout(5) {
+    waitUntil {
+       script {
+         def r = sh script: &apos;wget -q http://remoterhoste/welcome.jsf -O /dev/null&apos;, returnStatus: true
+         return (r == 0);
+       }
+    }
+}
+*/
+//****************************************************************************************
+// SUT Stuff on master
+//*****************************************************************************************
+
+
+node(&quot;master&quot;){
+    stage(&quot;build SUT&quot;){
+        dir(&apos;sut&apos;){
+            git url: &apos;https://github.com/ajodochus/wpfapp1.git&apos;
+            //   bat &quot;\&quot;${tool &apos;_git&apos;}\&quot; stash apply stash@{0}&quot;
+        	bat &quot;\&quot;${tool &apos;ms_build&apos;}msbuild.exe\&quot; wpfapp1.sln /p:Configuration=Debug&quot;
+        	
+       
+        def sut_file_version =	powershell(returnStdout: true, script:&quot;&quot;&quot;[System.Diagnostics.FileVersionInfo]::GetVersionInfo(\&quot;${env.WORKSPACE}\\sut\\wpfapp1\\bin\\Debug\\wpfapp1.exe\&quot;).FileVersion &quot;&quot;&quot;)
+            println sut_file_version
+
+
+
+        }
+    }
+    stage(&quot;stash master files&quot;){
+        dir(&quot;sut\\WpfApp1\\bin\\Debug\\&quot;){
+            stash &quot;stashed_sut&quot;
+        }
+    }
+    //*****************************************************************************************
+    // Ranorex stuff on master
+    //*****************************************************************************************
+    
+    stage(&quot;build ranorex&quot;){
+        dir(&apos;ranorex&apos;){
+            git url: &apos;https://github.com/ajodochus/jenkins_ranorex.git&apos;
+        }
+        bat &quot;\&quot;${tool &apos;ms_build&apos;}msbuild.exe\&quot; ranorex\\jenkins_ranorex.sln /p:Configuration=Debug&quot;
+         }
+    stage(&quot;stash master files&quot;){
+        dir(&quot;ranorex\\bin\\Debug\\&quot;){
+            stash &quot;stashed_ranorex&quot;
+        }
+    }
+    
+}
+   
+
+node(&quot;slave_vm_rnx07&quot;){
+    
+    stage(&quot;unstash on vmrnx07&quot;){
+        dir(&quot;sut&quot;){
+            unstash &quot;stashed_sut&quot;
+            //bat &quot;wpfapp1.exe&quot;
+        } 
+        dir(&quot;ranorex&quot;){
+            unstash &quot;stashed_ranorex&quot;
+        }
+
+    }
+
+
+
+    stage(&quot;start Ranorex TEsts on RNX07&quot;){
+         bat &quot;${env.WORKSPACE}\\ranorex\\jenkins_ranorex.exe /rf:myreport\\report /pa:fig_to_verify=\&quot;3\&quot; /pa:path_to_sut=\&quot;${env.WORKSPACE}\\sut\\wpfapp1.exe\&quot;&quot;
+
+    }
+    //	bat &quot;${env.WORKSPACE}\\ranorex\\RanorexAutomationHelpers\\bin\\Debug\\Ranorex.ReportToPdf.exe myreport\\report.rxzlog myreport\\report.pdf&quot;
+    //dir(&apos;myreport&apos;){
+      //      deleteDir()
+   //     }
+}
+
+
+
+/*
+    node(&quot;master&quot;){
+        stage(&quot;build SUT&quot;){
+            dir(&apos;sut&apos;){
+                git url: &apos;https://github.com/ajodochus/wpfapp1.git&apos;
+    
+             //   bat &quot;\&quot;${tool &apos;_git&apos;}\&quot; stash apply stash@{0}&quot;
+        	    bat &quot;\&quot;${tool &apos;ms_build&apos;}msbuild.exe\&quot; wpfapp1.sln /p:Configuration=Debug&quot;
+        	// &quot;calc.exe&quot;
+            }
+        }
+    }
+*/
+
+
+/*
+node(&quot;slave_vm_rnx07&quot;){
+    stage(&quot;Build RANOREX&quot;){
+        dir(&apos;myreport&apos;){
+            deleteDir()
+        }
+        // start ranorex tests and create report into myreport folder
+        dir(&apos;ranorex&apos;){
+            //git url: &apos;https://github.com/ajodochus/jenkins_ranorex.git&apos;
+            
+        }
+        bat &quot;\&quot;${tool &apos;ms_build&apos;}msbuild.exe\&quot; ranorex\\jenkins_ranorex.sln /p:Configuration=Debug&quot;
+        bat &quot;${env.WORKSPACE}\\ranorex\\bin\\Debug\\jenkins_ranorex.exe /rf:myreport\\report /pa:path_to_sut=\&quot;${env.WORKSPACE}\\sut\\wpfapp1\\bin\\Debug\\wpfapp1.exe\&quot;&quot;
+        	// delete report folder with pdf because overwriting is no option
+        	
+    	// convert ranorex report into pdf
+    	bat &quot;${env.WORKSPACE}\\ranorex\\RanorexAutomationHelpers\\bin\\Debug\\Ranorex.ReportToPdf.exe myreport\\report.rxzlog myreport\\report.pdf&quot;
+    }
+}
+*/</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

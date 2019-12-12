@@ -1,0 +1,75 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.36">
+  <actions/>
+  <description>timeout(120) {&#xd;
+waitUntil {&#xd;
+ powershell(returnStdout: true, script:&quot;&quot;&quot;&#xd;
+                        $ProcessList = @(&#xd;
+                            &quot;notepad&quot; #or whatever you want to monitor&#xd;
+                        )&#xd;
+                        &#xd;
+                        Do {  &#xd;
+                            $ProcessesFound = Get-Process | ? {$ProcessList -contains $_.Name} | Select-Object -ExpandProperty Name&#xd;
+                            If ($ProcessesFound) {&#xd;
+                                Write-Host &quot;Still running: \$($ProcessesFound)&quot;&#xd;
+                                Start-Sleep 1&#xd;
+                            }&#xd;
+                        } Until (!$ProcessesFound)&#xd;
+                   &#xd;
+                   &quot;&quot;&quot;)    &#xd;
+                   &#xd;
+                }&#xd;
+}</description>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.78">
+    <script>
+stage(&apos;stage 1&apos;) {
+   node(&quot;master&quot;) {
+       
+        def stdout = powershell(returnStdout: true, script: &apos;&apos;&apos;
+         Write-Output &apos;Hello, World!&apos;
+        &apos;&apos;&apos;)
+        println stdout
+        
+        def hostname =   powershell(returnStdout: true, script:&apos;&apos;&apos; $env:computername&apos;&apos;&apos;)
+        println hostname
+        
+        
+        
+        
+        // timeout(120) {
+            // waitUntil {
+             def timeout = 30
+             powershell(returnStdout: true, script:&apos;&apos;&apos;
+                    $ProcessList = @(
+                        \&quot;notepad\&quot;
+                    )
+                    $timeout = 30
+                    $timeout_init = 0
+                    
+                    Do {  
+                            
+                            $ProcessesFound = [bool](Get-Process | ? {$ProcessList -contains $_.Name} | Select-Object -ExpandProperty Name)
+                            If ($ProcessesFound) {
+                                Write-Host \&quot;Still running: \$($ProcessesFound)\&quot;
+                                Write-Host \&quot;Still running: $timeout_init\&quot;
+                                Start-Sleep 1
+                                $timeout_init++
+     
+                            }
+                            Write-Host \&quot;not running: \$($ProcessesFound)\&quot;
+                        } Until ($timeout_init -gt 30 -or !$ProcessesFound )
+                   
+                &apos;&apos;&apos;)    
+                   
+                   
+            // }
+        //}
+   }
+}</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>
