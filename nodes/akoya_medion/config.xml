@@ -1,8 +1,8 @@
 <?xml version='1.1' encoding='UTF-8'?>
 <slave>
-  <name>medion_laptop</name>
+  <name>akoya_medion</name>
   <description></description>
-  <remoteFS>c:\projekte\jenkins\</remoteFS>
+  <remoteFS>c:\jenkins\</remoteFS>
   <numExecutors>1</numExecutors>
   <mode>NORMAL</mode>
   <retentionStrategy class="hudson.slaves.RetentionStrategy$Always"/>
